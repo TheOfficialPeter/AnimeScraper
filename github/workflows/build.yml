@@ -1,0 +1,40 @@
+name: Go Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        go-version: [1.21.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Build
+        env:
+          GOOS: ${{ contains(matrix.os, 'windows') && 'windows' || contains(matrix.os, 'mac') && 'darwin' || 'linux' }}
+          GOARCH: amd64
+        run: |
+          mkdir -p bin
+          go build -o bin/animescraper${{ contains(matrix.os, 'windows') && '.exe' || '' }} main.go
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: animescraper-${{ matrix.os }}
+          path: bin/
