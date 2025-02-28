@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anime Recommendations - Anime Scraper</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      .anime-card {
+        transition: all 0.3s ease;
+        position: relative;
+        aspect-ratio: 2/3;
+        overflow: hidden;
+        cursor: pointer;
+        height: 100%;
+        min-height: 250px;
+      }
+      .anime-card:hover {
+        transform: translateY(-5px) scale(1.02);
+      }
+      .anime-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+      }
+      .anime-card:hover img {
+        transform: scale(1.1);
+      }
+      .anime-card-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 5rem 1rem 1rem;
+        background: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 0.98) 5%,
+          rgba(0, 0, 0, 0.95) 10%,
+          rgba(0, 0, 0, 0.9) 15%,
+          rgba(0, 0, 0, 0.8) 25%,
+          rgba(0, 0, 0, 0.7) 35%,
+          rgba(0, 0, 0, 0.6) 45%,
+          rgba(0, 0, 0, 0.5) 55%,
+          rgba(0, 0, 0, 0.4) 65%,
+          rgba(0, 0, 0, 0.3) 75%,
+          rgba(0, 0, 0, 0.2) 85%,
+          rgba(0, 0, 0, 0.1) 92%,
+          rgba(0, 0, 0, 0) 100%
+        );
+        color: white;
+        transition: all 0.3s ease;
+      }
+      .anime-card:hover .anime-card-content {
+        padding-top: 8rem;
+        background: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 0.98) 10%,
+          rgba(0, 0, 0, 0.95) 20%,
+          rgba(0, 0, 0, 0.9) 30%,
+          rgba(0, 0, 0, 0.85) 40%,
+          rgba(0, 0, 0, 0.8) 50%,
+          rgba(0, 0, 0, 0.7) 60%,
+          rgba(0, 0, 0, 0.6) 70%,
+          rgba(0, 0, 0, 0.4) 80%,
+          rgba(0, 0, 0, 0.2) 90%,
+          rgba(0, 0, 0, 0.1) 95%,
+          rgba(0, 0, 0, 0) 100%
+        );
+      }
+      .anime-card-content h3 {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+      }
+      .anime-card-rating {
+        display: flex;
+        align-items: center;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 0.5rem;
+      }
+      .anime-card-content p {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 0.875rem;
+        opacity: 0;
+        transition: all 0.3s ease;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
+      .anime-card-content .recommendation-by {
+        font-size: 0.75rem;
+        opacity: 0;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        transition: opacity 0.3s ease;
+      }
+      .anime-card-details {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      .anime-card:hover .anime-card-details {
+        max-height: 200px;
+        opacity: 1;
+        margin-top: 0.5rem;
+      }
+      .anime-card:hover .anime-card-content p {
+        opacity: 0.9;
+      }
+      .anime-card:hover .recommendation-by {
+        opacity: 0.75;
+      }
+      .loading {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .suggestions-container {
+        position: relative;
+      }
+      .suggestions-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1f2937;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+          0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        z-index: 50;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .suggestion-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        color: #e5e7eb;
+      }
+      .suggestion-item:hover {
+        background-color: #374151;
+      }
+      .suggestion-item img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 0.25rem;
+        margin-right: 1rem;
+      }
+
+      /* Dark mode styles */
+      html.dark {
+        background-color: #111827;
+        color: #e5e7eb;
+      }
+
+      html.dark .bg-white {
+        background-color: #1f2937;
+      }
+
+      html.dark .text-gray-600 {
+        color: #9ca3af;
+      }
+
+      html.dark .text-gray-500 {
+        color: #6b7280;
+      }
+
+      html.dark .bg-gray-100 {
+        background-color: #111827;
+      }
+
+      html.dark .border {
+        border-color: #374151;
+      }
+
+      html.dark input,
+      html.dark select {
+        background-color: #374151;
+        color: #e5e7eb;
+        border-color: #4b5563;
+      }
+
+      html.dark input::placeholder {
+        color: #9ca3af;
+      }
+
+      html.dark .bg-indigo-600 {
+        background-color: #4f46e5;
+      }
+
+      html.dark .hover\:bg-indigo-700:hover {
+        background-color: #4338ca;
+      }
+
+      html.dark .text-gray-800 {
+        color: #e5e7eb;
+      }
+
+      @media (max-width: 640px) {
+        .anime-card {
+          min-height: 200px;
+        }
+        .anime-card-content {
+          padding: 3rem 0.5rem 0.5rem;
+        }
+        .anime-card-content h3 {
+          font-size: 0.85rem;
+          -webkit-line-clamp: 1;
+          margin-bottom: 0.25rem;
+        }
+        .anime-card-rating {
+          font-size: 0.75rem;
+          margin-bottom: 0.25rem;
+        }
+        .anime-card-content p {
+          font-size: 0.75rem;
+          -webkit-line-clamp: 2;
+        }
+        .anime-card:hover .anime-card-content {
+          padding-top: 3rem;
+        }
+        .anime-card:hover .anime-card-details {
+          max-height: 50px;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen dark:bg-gray-900">
+    <nav class="bg-indigo-600 text-white shadow-lg">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col md:flex-row gap-4">
+          <a href="/" class="text-2xl font-bold hover:text-gray-200"
+            >Anime Scraper</a
+          >
+          <div class="flex flex-wrap gap-2">
+            <a
+              href="/"
+              class="hover:bg-indigo-700 px-4 py-2 rounded transition-colors"
+            >
+              <i class="fas fa-home mr-2"></i>Home
+            </a>
+            <a
+              href="/recommendations"
+              class="bg-indigo-700 px-4 py-2 rounded transition-colors"
+            >
+              <i class="fas fa-thumbs-up mr-2"></i>Recommendations
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-8">
+      <div class="max-w-3xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+          Find Similar Anime
+        </h1>
+
+        <div class="suggestions-container mb-8">
+          <div class="relative">
+            <input
+              type="text"
+              id="animeSearch"
+              placeholder="Search for an anime..."
+              class="w-full p-4 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-12"
+            />
+            <div
+              class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+            >
+              <i id="searchIcon" class="fas fa-search"></i>
+            </div>
+          </div>
+          <div id="suggestionsList" class="suggestions-list hidden"></div>
+        </div>
+
+        <div id="selectedAnime" class="hidden mb-8">
+          <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center gap-4">
+              <img
+                id="selectedAnimeImage"
+                class="w-24 h-24 object-cover rounded"
+                src=""
+                alt=""
+              />
+              <div>
+                <h2 id="selectedAnimeTitle" class="text-xl font-bold"></h2>
+                <button
+                  onclick="clearSelection()"
+                  class="text-red-600 text-sm mt-2 hover:text-red-700"
+                >
+                  <i class="fas fa-times mr-1"></i>Clear Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="recommendationsLoading" class="hidden"></div>
+
+        <div
+          id="recommendations"
+          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+        >
+          <!-- Recommendations will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let searchTimeout;
+      let selectedAnimeId = null;
+
+      const searchInput = document.getElementById("animeSearch");
+      const suggestionsList = document.getElementById("suggestionsList");
+      const searchIcon = document.getElementById("searchIcon");
+
+      searchInput.addEventListener("input", function () {
+        const query = this.value.trim();
+
+        clearTimeout(searchTimeout);
+
+        if (query.length < 3) {
+          suggestionsList.classList.add("hidden");
+          return;
+        }
+
+        searchTimeout = setTimeout(() => {
+          fetchSuggestions(query);
+        }, 300);
+      });
+
+      async function fetchSuggestions(query) {
+        searchIcon.classList.add("hidden");
+
+        try {
+          const response = await fetch(
+            `/api/suggestions?q=${encodeURIComponent(query)}`
+          );
+          const data = await response.json();
+
+          displaySuggestions(data.data);
+        } catch (error) {
+          console.error("Error fetching suggestions:", error);
+        }
+
+        searchIcon.classList.remove("hidden");
+      }
+
+      function displaySuggestions(suggestions) {
+        if (!suggestions.length) {
+          suggestionsList.classList.add("hidden");
+          return;
+        }
+
+        suggestionsList.innerHTML = suggestions
+          .map((anime) => {
+            // Store escaped versions for data attributes only
+            const escapedTitleEnglish = (anime.title_english || anime.title)
+              .replace(/'/g, "\\'")
+              .replace(/"/g, '\\"');
+            const escapedTitle = anime.title
+              .replace(/'/g, "\\'")
+              .replace(/"/g, '\\"');
+
+            // Use the original unescaped titles for display
+            const displayTitle = anime.title_english || anime.title;
+
+            return `
+          <div class="suggestion-item" data-id="${anime.mal_id}" data-title-english="${escapedTitleEnglish}" 
+               data-title="${escapedTitle}" data-image="${anime.images.jpg.image_url}">
+            <img src="${anime.images.jpg.image_url}" alt="${anime.title}">
+            <span class="font-medium">${displayTitle}</span>
+          </div>
+        `;
+          })
+          .join("");
+
+        // Add event listeners to suggestion items
+        const suggestionItems =
+          suggestionsList.querySelectorAll(".suggestion-item");
+        suggestionItems.forEach((item) => {
+          item.addEventListener("click", function () {
+            const id = this.getAttribute("data-id");
+            const titleEnglish = this.getAttribute("data-title-english");
+            const title = this.getAttribute("data-title");
+            const image = this.getAttribute("data-image");
+            selectAnime(id, titleEnglish, title, image);
+          });
+        });
+
+        suggestionsList.classList.remove("hidden");
+      }
+
+      function selectAnime(id, titleEnglish, title, image) {
+        selectedAnimeId = id;
+
+        // Use the English title if available and unescape it for display
+        const displayTitle = (titleEnglish || title)
+          .replace(/\\'/g, "'")
+          .replace(/\\"/g, '"');
+
+        // Update selected anime display
+        document.getElementById("selectedAnime").classList.remove("hidden");
+        document.getElementById("selectedAnimeImage").src = image;
+        document.getElementById("selectedAnimeTitle").textContent =
+          displayTitle;
+
+        // Clear search
+        searchInput.value = "";
+        suggestionsList.classList.add("hidden");
+
+        // Fetch recommendations
+        fetchRecommendations(id);
+      }
+
+      function clearSelection() {
+        selectedAnimeId = null;
+        document.getElementById("selectedAnime").classList.add("hidden");
+        document.getElementById("recommendations").innerHTML = "";
+      }
+
+      async function fetchRecommendations(animeId) {
+        document.getElementById("recommendations").innerHTML = "";
+        const loadingDiv = document.getElementById("recommendationsLoading");
+        loadingDiv.innerHTML = `
+          <div class="flex justify-center items-center py-8">
+            <i class="fas fa-spinner loading text-indigo-600 text-3xl"></i>
+            <span class="ml-3 text-gray-500">Loading recommendations...</span>
+          </div>
+        `;
+        loadingDiv.classList.remove("hidden");
+
+        try {
+          // First fetch the recommendations
+          const response = await fetch(`/api/recommendations/${animeId}`);
+          const data = await response.json();
+
+          // For each recommendation, fetch additional details to get the score
+          const recommendationsWithDetails = await Promise.all(
+            data.data.map(async (rec) => {
+              try {
+                const detailsResponse = await fetch(
+                  `/api/anime/${rec.entry.mal_id}`
+                );
+                const detailsData = await detailsResponse.json();
+                rec.entry.score = detailsData.data?.score || null;
+              } catch (error) {
+                console.error("Error fetching anime details:", error);
+              }
+              return rec;
+            })
+          );
+
+          displayRecommendations(data.data);
+        } catch (error) {
+          console.error("Error fetching recommendations:", error);
+          document.getElementById("recommendations").innerHTML = `
+            <div class="col-span-full text-center text-red-500 py-8">
+              Error loading recommendations. Please try again.
+            </div>
+          `;
+        } finally {
+          loadingDiv.classList.add("hidden");
+        }
+      }
+
+      function displayRecommendations(recommendations) {
+        const recommendationsDiv = document.getElementById("recommendations");
+
+        if (!recommendations.length) {
+          recommendationsDiv.innerHTML = `
+            <div class="col-span-full text-center text-gray-500 py-8">
+              No recommendations found for this anime.
+            </div>
+          `;
+          return;
+        }
+
+        recommendationsDiv.innerHTML = recommendations
+          .map((rec) => {
+            // Unescape any escaped characters in the title
+            const title = (rec.entry.title_english || rec.entry.title)
+              .replace(/\\'/g, "'")
+              .replace(/\\"/g, '"');
+            // Limit content length for better display
+            const content = rec.content || "No description available.";
+            const truncatedContent =
+              content.length > 150
+                ? content.substring(0, 150) + "..."
+                : content;
+
+            // Rating display
+            const ratingHtml = rec.entry.score
+              ? `<div class="anime-card-rating">
+                <span class="text-yellow-500 mr-1"><i class="fas fa-star"></i></span>
+                <span>${rec.entry.score}</span>
+              </div>`
+              : "";
+
+            return `
+              <div class="anime-card bg-white rounded-lg shadow-lg overflow-hidden">
+                <img src="${rec.entry.images.jpg.image_url}" alt="${title}" 
+                    class="w-full h-full object-cover">
+                <div class="anime-card-content">
+                  <h3 class="font-bold text-lg">${title}</h3>
+                  ${ratingHtml}
+                  <div class="anime-card-details">
+                    <p>${truncatedContent}</p>
+                    <div class="recommendation-by">Recommended by: ${rec.user.username}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      // Close suggestions when clicking outside
+      document.addEventListener("click", function (e) {
+        if (!e.target.closest(".suggestions-container")) {
+          suggestionsList.classList.add("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anime Scraper</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      .anime-card {
+        transition: all 0.3s ease;
+        position: relative;
+        aspect-ratio: 2/3;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .anime-card:hover {
+        transform: translateY(-5px) scale(1.02);
+      }
+      .anime-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+      }
+      .anime-card:hover img {
+        transform: scale(1.1);
+      }
+      .anime-card-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 5rem 1rem 1rem;
+        background: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 0.98) 5%,
+          rgba(0, 0, 0, 0.95) 10%,
+          rgba(0, 0, 0, 0.9) 15%,
+          rgba(0, 0, 0, 0.8) 25%,
+          rgba(0, 0, 0, 0.7) 35%,
+          rgba(0, 0, 0, 0.6) 45%,
+          rgba(0, 0, 0, 0.5) 55%,
+          rgba(0, 0, 0, 0.4) 65%,
+          rgba(0, 0, 0, 0.3) 75%,
+          rgba(0, 0, 0, 0.2) 85%,
+          rgba(0, 0, 0, 0.1) 92%,
+          rgba(0, 0, 0, 0) 100%
+        );
+        color: white;
+        transition: all 0.3s ease;
+      }
+      .anime-card:hover .anime-card-content {
+        padding-top: 8rem;
+        background: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 0.98) 10%,
+          rgba(0, 0, 0, 0.95) 20%,
+          rgba(0, 0, 0, 0.9) 30%,
+          rgba(0, 0, 0, 0.85) 40%,
+          rgba(0, 0, 0, 0.8) 50%,
+          rgba(0, 0, 0, 0.7) 60%,
+          rgba(0, 0, 0, 0.6) 70%,
+          rgba(0, 0, 0, 0.4) 80%,
+          rgba(0, 0, 0, 0.2) 90%,
+          rgba(0, 0, 0, 0.1) 95%,
+          rgba(0, 0, 0, 0) 100%
+        );
+      }
+      .anime-card-content h3 {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+      }
+      .anime-card-rating {
+        display: flex;
+        align-items: center;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 0.5rem;
+      }
+      .anime-card-details {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      .anime-card:hover .anime-card-details {
+        max-height: 200px;
+        opacity: 1;
+        margin-top: 0.5rem;
+      }
+      .anime-card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+      }
+      .anime-card-tag {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.5rem;
+        background: rgba(79, 70, 229, 0.3);
+        border: 1px solid rgba(79, 70, 229, 0.5);
+        border-radius: 0.25rem;
+        color: #c7d2fe;
+      }
+      .anime-card-synopsis {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
+      .loading {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.75);
+        z-index: 50;
+      }
+      .modal.show {
+        display: flex;
+      }
+      .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .youtube-container {
+        position: relative;
+        padding-bottom: 56.25%;
+        height: 0;
+        overflow: hidden;
+        max-width: 100%;
+      }
+      .youtube-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Dark mode styles */
+      html.dark {
+        background-color: #111827;
+        color: #e5e7eb;
+      }
+
+      html.dark .bg-white {
+        background-color: #1f2937;
+      }
+
+      html.dark .text-gray-600 {
+        color: #9ca3af;
+      }
+
+      html.dark .text-gray-500 {
+        color: #6b7280;
+      }
+
+      html.dark .bg-gray-100 {
+        background-color: #111827;
+      }
+
+      html.dark .border {
+        border-color: #374151;
+      }
+
+      html.dark input,
+      html.dark select {
+        background-color: #374151;
+        color: #e5e7eb;
+        border-color: #4b5563;
+      }
+
+      html.dark input::placeholder {
+        color: #9ca3af;
+      }
+
+      html.dark .bg-indigo-600 {
+        background-color: #4f46e5;
+      }
+
+      html.dark .hover\:bg-indigo-700:hover {
+        background-color: #4338ca;
+      }
+
+      html.dark .bg-indigo-100 {
+        background-color: #312e81;
+      }
+
+      html.dark .text-indigo-800 {
+        color: #c7d2fe;
+      }
+
+      #navbarItems {
+        display: none;
+      }
+
+      #navbarItems.show {
+        display: flex;
+      }
+
+      @media (min-width: 768px) {
+        #navbarItems {
+          display: flex;
+        }
+      }
+
+      /* Add new navbar styles */
+      .nav-button {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+        font-weight: 500;
+      }
+
+      .nav-button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-button i {
+        margin-right: 0.5rem;
+      }
+
+      @media (max-width: 767px) {
+        #navbarItems {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background-color: #4f46e5;
+          padding: 1rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          z-index: 50;
+        }
+
+        #navbarItems.show {
+          display: flex;
+          flex-direction: column;
+        }
+
+        #navbarItems .nav-button {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        #navbarItems .nav-button:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      /* Filter styles */
+      .filter-container {
+        position: relative;
+      }
+
+      #filterToggle {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background-color: #4f46e5;
+        color: white;
+        border-radius: 0.375rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 500;
+        margin-bottom: 1rem;
+      }
+
+      #filterToggle::after {
+        content: "\f078";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        transition: transform 0.2s;
+      }
+
+      #filterToggle.active::after {
+        transform: rotate(180deg);
+      }
+
+      #filterOptions {
+        display: none;
+      }
+
+      #filterOptions.show {
+        display: flex;
+      }
+
+      @media (max-width: 767px) {
+        #filterOptions {
+          flex-direction: column;
+          gap: 1rem;
+          background-color: white;
+          padding: 1rem;
+          border-radius: 0.375rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        html.dark #filterOptions {
+          background-color: #1f2937;
+        }
+
+        #filterOptions input,
+        #filterOptions select {
+          width: 100%;
+        }
+
+        #filterOptions button {
+          width: 100%;
+        }
+      }
+
+      @media (min-width: 768px) {
+        #filterToggle {
+          display: none;
+        }
+
+        #filterOptions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        #filterOptions > * {
+          flex: 1;
+        }
+
+        #filterOptions button {
+          flex: 0 0 auto;
+        }
+      }
+
+      /* Add responsive grid styles */
+      #results {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      @media (min-width: 480px) {
+        #results {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 640px) {
+        #results {
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1rem;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        #results {
+          grid-template-columns: repeat(5, 1fr);
+          gap: 1.5rem;
+        }
+      }
+
+      /* Adjust card content for mobile */
+      @media (max-width: 640px) {
+        .anime-card-content {
+          padding: 3rem 0.5rem 0.5rem;
+        }
+
+        .anime-card-content h3 {
+          font-size: 0.875rem;
+          -webkit-line-clamp: 1;
+          margin-bottom: 0.25rem;
+        }
+
+        .anime-card-rating {
+          font-size: 0.75rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .anime-card-tags {
+          display: none;
+        }
+
+        .anime-card-synopsis {
+          display: none;
+        }
+
+        .anime-card:hover .anime-card-content {
+          padding-top: 3rem;
+        }
+
+        .anime-card:hover .anime-card-details {
+          max-height: 50px;
+        }
+      }
+
+      /* Update the mobile modal styles */
+      @media (max-width: 640px) {
+        .modal-content {
+          margin-top: 3rem;
+        }
+        
+        .modal .fa-chevron-down {
+          backdrop-filter: blur(4px);
+          transition: all 0.2s ease;
+        }
+        
+        .modal .fa-chevron-down:hover {
+          background-color: rgba(0, 0, 0, 0.5);
+          transform: translateY(2px);
+        }
+      }
+
+      /* Add these styles to the existing modal styles */
+      .modal-content .absolute.-top-8 {
+        top: -2rem;
+      }
+
+      .modal-content button.bg-black\/30 {
+        backdrop-filter: blur(4px);
+        transition: all 0.2s ease;
+      }
+
+      .modal-content button.bg-black\/30:hover {
+        background-color: rgba(0, 0, 0, 0.5);
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen dark:bg-gray-900">
+    <nav class="bg-indigo-600 text-white shadow-lg relative">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex justify-between items-center">
+          <div class="text-2xl font-bold">Anime Scraper</div>
+          <button
+            id="menuToggle"
+            class="md:hidden p-2 hover:bg-indigo-700 rounded transition-colors"
+          >
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+        <div id="navbarItems" class="md:mt-4">
+          <div class="flex flex-col md:flex-row md:flex-wrap gap-2">
+            <button onclick="loadTrending()" class="nav-button">
+              <i class="fas fa-fire-alt"></i>Trending
+            </button>
+            <button onclick="loadUpcoming()" class="nav-button">
+              <i class="fas fa-calendar-alt"></i>Upcoming
+            </button>
+            <button onclick="loadIsekai()" class="nav-button">
+              <i class="fas fa-dragon"></i>Isekai
+            </button>
+            <button onclick="loadEcchi()" class="nav-button">
+              <i class="fas fa-heart"></i>Ecchi
+            </button>
+            <button onclick="loadRomance()" class="nav-button">
+              <i class="fas fa-kiss-wink-heart"></i>Romance
+            </button>
+            <button onclick="loadBookmarks()" class="nav-button">
+              <i class="fas fa-bookmark"></i>Bookmarks
+            </button>
+            <a href="/recommendations" class="nav-button">
+              <i class="fas fa-thumbs-up"></i>Find Similar
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Modal -->
+    <div id="animeModal" class="modal items-center justify-center">
+      <button
+        onclick="closeModal()"
+        class="md:hidden absolute top-2 left-1/2 transform -translate-x-1/2 text-white text-2xl p-2 z-50"
+      >
+        <i class="fas fa-chevron-down bg-black/30 rounded-full p-2"></i>
+      </button>
+      
+      <div class="modal-content bg-white w-full max-w-4xl mx-4 rounded-lg shadow-xl" style="margin-top: 3rem;">
+        <div class="relative">
+          <button
+            onclick="closeModal()"
+            class="hidden md:absolute md:block right-4 top-4 text-gray-500 hover:text-gray-700"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
+          <div id="modalContent" class="p-6">
+            <!-- Modal content will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-6 py-8">
+      <div class="mb-8">
+        <div class="filter-container">
+          <button id="filterToggle" class="md:hidden">
+            <span>Filters</span>
+          </button>
+          <div id="filterOptions">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search anime..."
+              class="p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <select
+              id="genreFilter"
+              class="p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Genres</option>
+              <option value="1">Action</option>
+              <option value="2">Adventure</option>
+              <option value="4">Comedy</option>
+              <option value="8">Drama</option>
+              <option value="10">Fantasy</option>
+              <option value="62">Isekai</option>
+              <option value="9">Ecchi</option>
+              <option value="22">Romance</option>
+              <option value="37">Supernatural</option>
+              <option value="27">Shounen</option>
+            </select>
+
+            <select
+              id="seasonFilter"
+              class="p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Seasons</option>
+              <option value="spring">Spring</option>
+              <option value="summer">Summer</option>
+              <option value="fall">Fall</option>
+              <option value="winter">Winter</option>
+            </select>
+
+            <select
+              id="statusFilter"
+              class="p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Status</option>
+              <option value="airing">Airing</option>
+              <option value="complete">Completed</option>
+              <option value="upcoming">Upcoming</option>
+            </select>
+
+            <select
+              id="orderFilter"
+              class="p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Default Order</option>
+              <option value="popularity">Popularity</option>
+            </select>
+
+            <button
+              onclick="searchAnime()"
+              class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="loading" class="hidden">
+        <div class="flex justify-center items-center h-64">
+          <i class="fas fa-spinner loading text-4xl text-indigo-600"></i>
+        </div>
+      </div>
+
+      <div
+        id="results"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      >
+        <!-- Results will be populated here -->
+      </div>
+    </div>
+
+    <script>
+      let currentPage = 1;
+      let animeData = []; // Store anime data globally
+
+      // Initialize bookmarks from localStorage
+      let bookmarks = JSON.parse(localStorage.getItem("animeBookmarks")) || [];
+
+      function toggleBookmark(e, index) {
+        e.stopPropagation(); // Prevent modal from opening
+        const anime = animeData[index];
+        const bookmarkIndex = bookmarks.findIndex(
+          (b) => b.mal_id === anime.mal_id
+        );
+
+        if (bookmarkIndex === -1) {
+          bookmarks.push(anime);
+          e.target.classList.remove("far");
+          e.target.classList.add("fas");
+        } else {
+          bookmarks.splice(bookmarkIndex, 1);
+          e.target.classList.remove("fas");
+          e.target.classList.add("far");
+        }
+
+        localStorage.setItem("animeBookmarks", JSON.stringify(bookmarks));
+      }
+
+      function isBookmarked(malId) {
+        return bookmarks.some((b) => b.mal_id === malId);
+      }
+
+      function loadBookmarks() {
+        displayAnime(bookmarks);
+      }
+
+      function showLoading() {
+        document.getElementById("loading").classList.remove("hidden");
+        document.getElementById("results").classList.add("hidden");
+      }
+
+      function hideLoading() {
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("results").classList.remove("hidden");
+      }
+
+      function showModal(index) {
+        const anime = animeData[index];
+        const modal = document.getElementById("animeModal");
+        const modalContent = document.getElementById("modalContent");
+
+        let trailerHtml = "";
+        if (anime.trailer && anime.trailer.youtube_id) {
+          trailerHtml = `
+            <div class="youtube-container mb-6">
+              <iframe
+                src="https://www.youtube.com/embed/${anime.trailer.youtube_id}"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>
+          `;
+        }
+
+        const studios = anime.studios
+          ? anime.studios.map((studio) => studio.name).join(", ")
+          : "N/A";
+
+        modalContent.innerHTML = `
+          <div class="flex flex-col md:flex-row gap-6">
+            <div class="md:w-1/3">
+              <img src="${anime.images.jpg.image_url}" alt="${anime.title}" 
+                   class="w-full rounded-lg shadow-lg">
+              <div class="mt-4">
+                <div class="flex items-center justify-center text-lg">
+                  <span class="text-yellow-500 mr-2"><i class="fas fa-star"></i></span>
+                  <span class="font-bold">${anime.score || "N/A"}</span>
+                </div>
+              </div>
+            </div>
+            <div class="md:w-2/3">
+              <h2 class="text-2xl font-bold mb-4">${
+                anime.title_english || anime.title
+              }</h2>
+              ${trailerHtml}
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p class="text-sm text-gray-600">Episodes: ${
+                    anime.episodes || "TBA"
+                  }</p>
+                  <p class="text-sm text-gray-600">Status: ${anime.status}</p>
+                  <p class="text-sm text-gray-600">Year: ${
+                    anime.year || "N/A"
+                  }</p>
+                  <p class="text-sm text-gray-600">Season: ${
+                    anime.season || "N/A"
+                  }</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Duration: ${
+                    anime.duration || "N/A"
+                  }</p>
+                  <p class="text-sm text-gray-600">Rating: ${
+                    anime.rating || "N/A"
+                  }</p>
+                  <p class="text-sm text-gray-600">Studios: ${studios}</p>
+                </div>
+              </div>
+              <div class="mb-4">
+                <p class="text-sm font-semibold text-gray-600 mb-2">Genres:</p>
+                <div class="flex flex-wrap gap-2">
+                  ${
+                    anime.genres
+                      ? anime.genres
+                          .map(
+                            (genre) =>
+                              `<span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">${genre.name}</span>`
+                          )
+                          .join("")
+                      : "N/A"
+                  }
+                </div>
+              </div>
+              <div class="mt-4">
+                <p class="text-sm font-semibold text-gray-600 mb-2">Synopsis:</p>
+                <p class="text-sm text-gray-600">${
+                  anime.synopsis || "No synopsis available."
+                }</p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        modal.classList.add("show");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeModal() {
+        const modal = document.getElementById("animeModal");
+        modal.classList.remove("show");
+        document.body.style.overflow = "";
+
+        // Stop video if playing
+        const iframe = modal.querySelector("iframe");
+        if (iframe) {
+          iframe.src = iframe.src;
+        }
+      }
+
+      function displayAnime(data) {
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = "";
+        animeData = data;
+
+        data.forEach((anime, index) => {
+          const card = document.createElement("div");
+          card.className =
+            "anime-card bg-white rounded-lg shadow-lg overflow-hidden";
+          card.onclick = () => showModal(index);
+
+          const bookmarkClass = isBookmarked(anime.mal_id) ? "fas" : "far";
+
+          card.innerHTML = `
+            <div class="relative">
+              <button 
+                class="absolute top-2 right-2 z-10 text-white text-xl p-2 hover:text-yellow-400 transition-colors"
+                onclick="toggleBookmark(event, ${index})"
+              >
+                <i class="${bookmarkClass} fa-bookmark"></i>
+              </button>
+              <img src="${anime.images.jpg.image_url}" alt="${anime.title}" 
+                  class="w-full h-full object-cover">
+            </div>
+            <div class="anime-card-content">
+                <h3 class="font-bold text-lg">${
+                  anime.title_english || anime.title
+                }</h3>
+                <div class="anime-card-rating">
+                    <span class="text-yellow-500 mr-1"><i class="fas fa-star"></i></span>
+                    <span>${anime.score || "N/A"}</span>
+                </div>
+                <div class="anime-card-details">
+                    <div class="anime-card-tags">
+                        ${
+                          anime.genres
+                            ? anime.genres
+                                .slice(0, 3)
+                                .map(
+                                  (genre) =>
+                                    `<span class="anime-card-tag">${genre.name}</span>`
+                                )
+                                .join("")
+                            : ""
+                        }
+                    </div>
+                    <div class="anime-card-synopsis">
+                        ${anime.synopsis || "No synopsis available."}
+                    </div>
+                </div>
+            </div>
+          `;
+          resultsDiv.appendChild(card);
+        });
+      }
+
+      // Close modal when clicking outside
+      document
+        .getElementById("animeModal")
+        .addEventListener("click", function (e) {
+          if (e.target === this) {
+            closeModal();
+          }
+        });
+
+      // Close modal with Escape key
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          closeModal();
+        }
+      });
+
+      async function fetchAnime(url) {
+        showLoading();
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          hideLoading();
+          displayAnime(data.data);
+        } catch (error) {
+          console.error("Error fetching anime:", error);
+          hideLoading();
+        }
+      }
+
+      function loadTrending() {
+        fetchAnime("/api/trending");
+      }
+
+      function loadUpcoming() {
+        fetchAnime("/api/upcoming");
+      }
+
+      function loadIsekai() {
+        fetchAnime("/api/isekai");
+      }
+
+      function loadEcchi() {
+        fetchAnime("/api/ecchi");
+      }
+
+      function loadRomance() {
+        fetchAnime("/api/romance");
+      }
+
+      function searchAnime() {
+        const query = document.getElementById("searchInput").value;
+        const genre = document.getElementById("genreFilter").value;
+        const season = document.getElementById("seasonFilter").value;
+        const status = document.getElementById("statusFilter").value;
+        const order = document.getElementById("orderFilter").value;
+
+        let url = `/api/search?q=${encodeURIComponent(query)}`;
+        if (genre) url += `&genre=${genre}`;
+        if (season) url += `&season=${season}`;
+        if (status) url += `&status=${status}`;
+        if (order) url += `&order_by=${order}`;
+
+        fetchAnime(url);
+      }
+
+      // Load trending anime by default
+      loadTrending();
+
+      // Add event listener for search input
+      document
+        .getElementById("searchInput")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            searchAnime();
+          }
+        });
+
+      document
+        .getElementById("menuToggle")
+        .addEventListener("click", function () {
+          const navbarItems = document.getElementById("navbarItems");
+          navbarItems.classList.toggle("show");
+        });
+
+      // Add this new event listener for nav buttons
+      document.querySelectorAll(".nav-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const navbarItems = document.getElementById("navbarItems");
+          if (window.innerWidth < 768) {
+            navbarItems.classList.remove("show");
+          }
+        });
+      });
+
+      document
+        .getElementById("filterToggle")
+        .addEventListener("click", function () {
+          const filterOptions = document.getElementById("filterOptions");
+          const filterToggle = document.getElementById("filterToggle");
+          filterOptions.classList.toggle("show");
+          filterToggle.classList.toggle("active");
+        });
+
+      // Close filters when clicking outside
+      document.addEventListener("click", function (e) {
+        const filterContainer = document.querySelector(".filter-container");
+        const filterToggle = document.getElementById("filterToggle");
+        const filterOptions = document.getElementById("filterOptions");
+
+        if (!filterContainer.contains(e.target) && window.innerWidth < 768) {
+          filterOptions.classList.remove("show");
+          filterToggle.classList.remove("active");
+        }
+      });
+    </script>
+  </body>
+</html>
+
+  </body>
+</html>
