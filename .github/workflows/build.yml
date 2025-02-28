@@ -6,12 +6,19 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: [1.21.x]
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
             goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
           - os: macos-latest
             goos: darwin
             goarch: arm64
@@ -23,18 +30,18 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.21.x"
 
       - name: Build
         env:
-          GOOS: ${{ contains(matrix.os, 'windows') && 'windows' || contains(matrix.os, 'mac') && 'darwin' || 'linux' }}
-          GOARCH: amd64
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p bin
-          go build -o bin/animescraper${{ contains(matrix.os, 'windows') && '.exe' || '' }} main.go
+          go build -o bin/animescraper${{ matrix.goos == 'windows' && '.exe' || '' }} main.go
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: animescraper-${{ matrix.os }}
+          name: animescraper-${{ matrix.goos }}-${{ matrix.goarch }}
           path: bin/
