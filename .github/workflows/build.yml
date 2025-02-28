@@ -7,21 +7,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
           - os: windows-latest
             goos: windows
             goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -38,10 +26,10 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p bin
-          go build -o bin/animescraper${{ matrix.goos == 'windows' && '.exe' || '' }} main.go
+          go build -o bin/animescraper.exe main.go
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: animescraper-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: animescraper-windows-amd64
           path: bin/
