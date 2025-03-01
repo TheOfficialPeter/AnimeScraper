@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -39,22 +42,52 @@ type AnimeResponse struct {
 	} `json:"data"`
 }
 
+// Updated to match AniList API response format
 type RecommendationsResponse struct {
-	Data []struct {
-		Entry struct {
-			MalID       int    `json:"mal_id"`
-			Title       string `json:"title"`
-			TitleEnglish string `json:"title_english"`
-			Images      struct {
-				JPG struct {
-					ImageURL string `json:"image_url"`
-				} `json:"jpg"`
-			} `json:"images"`
-		} `json:"entry"`
-		Content string `json:"content"`
-		User    struct {
-			Username string `json:"username"`
-		} `json:"user"`
+	Data struct {
+		Media struct {
+			Recommendations struct {
+				Nodes []struct {
+					MediaRecommendation struct {
+						ID    int `json:"id"`
+						Title struct {
+							Romaji  string `json:"romaji"`
+							English string `json:"english"`
+							Native  string `json:"native"`
+						} `json:"title"`
+						CoverImage struct {
+							Medium     string `json:"medium"`
+							Large      string `json:"large"`
+							ExtraLarge string `json:"extraLarge"`
+						} `json:"coverImage"`
+						AverageScore float64 `json:"averageScore"`
+					} `json:"mediaRecommendation"`
+					User struct {
+						Name string `json:"name"`
+					} `json:"user"`
+				} `json:"nodes"`
+			} `json:"recommendations"`
+		} `json:"Media"`
+	} `json:"data"`
+}
+
+// AniList API response for anime details
+type AniListAnimeResponse struct {
+	Data struct {
+		Media struct {
+			ID    int `json:"id"`
+			Title struct {
+				Romaji  string `json:"romaji"`
+				English string `json:"english"`
+				Native  string `json:"native"`
+			} `json:"title"`
+			CoverImage struct {
+				Medium     string `json:"medium"`
+				Large      string `json:"large"`
+				ExtraLarge string `json:"extraLarge"`
+			} `json:"coverImage"`
+			AverageScore float64 `json:"averageScore"`
+		} `json:"Media"`
 	} `json:"data"`
 }
 
@@ -66,6 +99,9 @@ type Genre struct {
 var client = resty.New().
 	SetBaseURL("https://api.jikan.moe/v4").
 	SetTimeout(10 * time.Second)
+
+// AniList GraphQL API endpoint
+const aniListURL = "https://graphql.anilist.co"
 
 func main() {
 	r := gin.Default()
@@ -235,21 +271,130 @@ func getAnimeSuggestions(c *gin.Context) {
 		return
 	}
 
-	var response AnimeResponse
-	resp, err := client.R().
-		SetResult(&response).
-		SetQueryParam("q", query).
-		SetQueryParam("limit", "5").
-		Get("/anime")
+	// GraphQL query for anime search
+	graphqlQuery := `
+	query ($search: String) {
+		Page(page: 1, perPage: 5) {
+			media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+				id
+				title {
+					romaji
+					english
+					native
+				}
+				coverImage {
+					medium
+					large
+					extraLarge
+				}
+				averageScore
+			}
+		}
+	}
+	`
 
-	if err != nil || resp.IsError() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch anime suggestions"})
+	// Create request variables
+	variables := map[string]interface{}{
+		"search": query,
+	}
+
+	// Create request body
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"query":     graphqlQuery,
+		"variables": variables,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	// Make request to AniList API
+	resp, err := http.Post(aniListURL, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch anime suggestions"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	var response struct {
+		Data struct {
+			Page struct {
+				Media []struct {
+					ID    int `json:"id"`
+					Title struct {
+						Romaji  string `json:"romaji"`
+						English string `json:"english"`
+						Native  string `json:"native"`
+					} `json:"title"`
+					CoverImage struct {
+						Medium     string `json:"medium"`
+						Large      string `json:"large"`
+						ExtraLarge string `json:"extraLarge"`
+					} `json:"coverImage"`
+					AverageScore float64 `json:"averageScore"`
+				} `json:"media"`
+			} `json:"Page"`
+		} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse anime suggestions"})
+		return
+	}
+
+	// Convert to format expected by frontend
+	var convertedResponse AnimeResponse
+	convertedResponse.Data = make([]struct {
+		MalID    int    `json:"mal_id"`
+		Title    string `json:"title"`
+		TitleEnglish string `json:"title_english"`
+		Images   struct {
+			JPG struct {
+				ImageURL string `json:"image_url"`
+			} `json:"jpg"`
+		} `json:"images"`
+		Score      float64 `json:"score"`
+		Status     string  `json:"status"`
+		Episodes   int     `json:"episodes"`
+		Synopsis   string  `json:"synopsis"`
+		Year       int     `json:"year"`
+		Genres     []Genre `json:"genres"`
+		Season     string  `json:"season"`
+		Popularity int     `json:"popularity"`
+		Trailer    struct {
+			YoutubeID string `json:"youtube_id"`
+			URL       string `json:"url"`
+		} `json:"trailer"`
+		Studios []struct {
+			Name string `json:"name"`
+		} `json:"studios"`
+		Duration string `json:"duration"`
+		Rating   string `json:"rating"`
+	}, len(response.Data.Page.Media))
+
+	for i, anime := range response.Data.Page.Media {
+		convertedResponse.Data[i].MalID = anime.ID
+		convertedResponse.Data[i].Title = anime.Title.Romaji
+		convertedResponse.Data[i].TitleEnglish = anime.Title.English
+		if convertedResponse.Data[i].TitleEnglish == "" {
+			convertedResponse.Data[i].TitleEnglish = anime.Title.Romaji
+		}
+		// Use extraLarge image if available, fallback to large, then medium
+		if anime.CoverImage.ExtraLarge != "" {
+			convertedResponse.Data[i].Images.JPG.ImageURL = anime.CoverImage.ExtraLarge
+		} else if anime.CoverImage.Large != "" {
+			convertedResponse.Data[i].Images.JPG.ImageURL = anime.CoverImage.Large
+		} else {
+			convertedResponse.Data[i].Images.JPG.ImageURL = anime.CoverImage.Medium
+		}
+		convertedResponse.Data[i].Score = anime.AverageScore / 10
+	}
+
+	c.JSON(http.StatusOK, convertedResponse)
 }
 
+// Updated to use AniList API
 func getAnimeRecommendations(c *gin.Context) {
 	animeID := c.Param("id")
 	if animeID == "" {
@@ -257,20 +402,133 @@ func getAnimeRecommendations(c *gin.Context) {
 		return
 	}
 
-	var response RecommendationsResponse
-	resp, err := client.R().
-		SetResult(&response).
-		SetQueryParam("fields", "title_english").
-		Get("/anime/" + animeID + "/recommendations")
+	// GraphQL query for recommendations
+	query := `
+	query ($id: Int) {
+		Media(id: $id, type: ANIME) {
+			recommendations(sort: RATING_DESC) {
+				nodes {
+					mediaRecommendation {
+						id
+						title {
+							romaji
+							english
+							native
+						}
+						coverImage {
+							medium
+							large
+							extraLarge
+						}
+						averageScore
+					}
+					user {
+						name
+					}
+				}
+			}
+		}
+	}
+	`
 
-	if err != nil || resp.IsError() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recommendations"})
+	// Create request variables
+	variables := map[string]interface{}{
+		"id": animeID,
+	}
+
+	// Create request body
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"query":     query,
+		"variables": variables,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	// Make request to AniList API
+	resp, err := http.Post(aniListURL, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recommendations"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	var response RecommendationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse recommendations"})
+		return
+	}
+
+	// Convert to format expected by frontend
+	var convertedResponse struct {
+		Data []struct {
+			Entry struct {
+				MalID       int     `json:"mal_id"`
+				Title       string  `json:"title"`
+				TitleEnglish string  `json:"title_english"`
+				Score       float64 `json:"score"`
+				Images      struct {
+					JPG struct {
+						ImageURL string `json:"image_url"`
+					} `json:"jpg"`
+				} `json:"images"`
+			} `json:"entry"`
+			Content string `json:"content"`
+			User    struct {
+				Username string `json:"username"`
+			} `json:"user"`
+		} `json:"data"`
+	}
+
+	// Map AniList response to the format expected by the frontend
+	convertedResponse.Data = make([]struct {
+		Entry struct {
+			MalID       int     `json:"mal_id"`
+			Title       string  `json:"title"`
+			TitleEnglish string  `json:"title_english"`
+			Score       float64 `json:"score"`
+			Images      struct {
+				JPG struct {
+					ImageURL string `json:"image_url"`
+				} `json:"jpg"`
+			} `json:"images"`
+		} `json:"entry"`
+		Content string `json:"content"`
+		User    struct {
+			Username string `json:"username"`
+		} `json:"user"`
+	}, len(response.Data.Media.Recommendations.Nodes))
+
+	for i, rec := range response.Data.Media.Recommendations.Nodes {
+		convertedResponse.Data[i].Entry.MalID = rec.MediaRecommendation.ID
+		convertedResponse.Data[i].Entry.Title = rec.MediaRecommendation.Title.Romaji
+		convertedResponse.Data[i].Entry.TitleEnglish = rec.MediaRecommendation.Title.English
+		if convertedResponse.Data[i].Entry.TitleEnglish == "" {
+			convertedResponse.Data[i].Entry.TitleEnglish = rec.MediaRecommendation.Title.Romaji
+		}
+		// Use extraLarge image if available, fallback to large, then medium
+		if rec.MediaRecommendation.CoverImage.ExtraLarge != "" {
+			convertedResponse.Data[i].Entry.Images.JPG.ImageURL = rec.MediaRecommendation.CoverImage.ExtraLarge
+		} else if rec.MediaRecommendation.CoverImage.Large != "" {
+			convertedResponse.Data[i].Entry.Images.JPG.ImageURL = rec.MediaRecommendation.CoverImage.Large
+		} else {
+			convertedResponse.Data[i].Entry.Images.JPG.ImageURL = rec.MediaRecommendation.CoverImage.Medium
+		}
+		// Set the score in the Entry structure
+		convertedResponse.Data[i].Entry.Score = rec.MediaRecommendation.AverageScore / 10
+		convertedResponse.Data[i].Content = "Score: " + fmt.Sprintf("%.2f", rec.MediaRecommendation.AverageScore/10)
+		convertedResponse.Data[i].User.Username = rec.User.Name
+		if convertedResponse.Data[i].User.Username == "" {
+			convertedResponse.Data[i].User.Username = "AniList User"
+		}
+	}
+
+	c.JSON(http.StatusOK, convertedResponse)
 }
 
+// Updated to use AniList API
 func getAnimeDetails(c *gin.Context) {
 	animeID := c.Param("id")
 	if animeID == "" {
@@ -278,7 +536,58 @@ func getAnimeDetails(c *gin.Context) {
 		return
 	}
 
-	var response struct {
+	// GraphQL query for anime details
+	query := `
+	query ($id: Int) {
+		Media(id: $id, type: ANIME) {
+			id
+			title {
+				romaji
+				english
+				native
+			}
+			coverImage {
+				medium
+				large
+				extraLarge
+			}
+			averageScore
+		}
+	}
+	`
+
+	// Create request variables
+	variables := map[string]interface{}{
+		"id": animeID,
+	}
+
+	// Create request body
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"query":     query,
+		"variables": variables,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// Make request to AniList API
+	resp, err := http.Post(aniListURL, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch anime details"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	var response AniListAnimeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse anime details"})
+		return
+	}
+
+	// Convert to format expected by frontend
+	var convertedResponse struct {
 		Data struct {
 			MalID       int     `json:"mal_id"`
 			Title       string  `json:"title"`
@@ -292,14 +601,21 @@ func getAnimeDetails(c *gin.Context) {
 		} `json:"data"`
 	}
 
-	resp, err := client.R().
-		SetResult(&response).
-		Get("/anime/" + animeID)
-
-	if err != nil || resp.IsError() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch anime details"})
-		return
+	convertedResponse.Data.MalID = response.Data.Media.ID
+	convertedResponse.Data.Title = response.Data.Media.Title.Romaji
+	convertedResponse.Data.TitleEnglish = response.Data.Media.Title.English
+	if convertedResponse.Data.TitleEnglish == "" {
+		convertedResponse.Data.TitleEnglish = response.Data.Media.Title.Romaji
+	}
+	convertedResponse.Data.Score = response.Data.Media.AverageScore / 10
+	// Use extraLarge image if available, fallback to large, then medium
+	if response.Data.Media.CoverImage.ExtraLarge != "" {
+		convertedResponse.Data.Images.JPG.ImageURL = response.Data.Media.CoverImage.ExtraLarge
+	} else if response.Data.Media.CoverImage.Large != "" {
+		convertedResponse.Data.Images.JPG.ImageURL = response.Data.Media.CoverImage.Large
+	} else {
+		convertedResponse.Data.Images.JPG.ImageURL = response.Data.Media.CoverImage.Medium
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, convertedResponse)
 } 

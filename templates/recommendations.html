@@ -95,6 +95,14 @@
         align-items: center;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         margin-bottom: 0.5rem;
+        font-weight: bold;
+        opacity: 1 !important;
+        font-size: 1.1rem;
+      }
+      .anime-card-rating .text-yellow-500 {
+        color: #f59e0b;
+        font-size: 1.2rem;
+        margin-right: 0.25rem;
       }
       .anime-card-content p {
         display: -webkit-box;
@@ -174,6 +182,14 @@
         border-radius: 0.25rem;
         margin-right: 1rem;
       }
+      .suggestion-item .flex-col {
+        display: flex;
+        flex-direction: column;
+      }
+      .suggestion-item .text-yellow-500 {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+      }
 
       /* Dark mode styles */
       html.dark {
@@ -251,26 +267,156 @@
           max-height: 50px;
         }
       }
+
+      .rating-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .rating-badge i {
+        color: #f59e0b;
+        margin-right: 4px;
+      }
+
+      /* Add navbar mobile styles */
+      #navbarItems {
+        display: none;
+      }
+
+      #navbarItems.show {
+        display: flex;
+      }
+
+      @media (min-width: 768px) {
+        #navbarItems {
+          display: flex;
+        }
+      }
+
+      /* Add new navbar styles */
+      .nav-button {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+        font-weight: 500;
+      }
+
+      .nav-button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      @media (max-width: 767px) {
+        #navbarItems {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background-color: #4f46e5;
+          padding: 1rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          z-index: 50;
+        }
+
+        #navbarItems.show {
+          display: flex;
+          flex-direction: column;
+        }
+
+        #navbarItems .nav-button {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        #navbarItems .nav-button:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      /* Add styles for the copy button */
+      .copy-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        z-index: 20;
+        transition: all 0.2s ease;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .bookmark-button {
+        position: absolute;
+        top: 10px;
+        right: 50px;
+        z-index: 20;
+        color: white;
+        text-xl: true;
+        padding: 8px;
+        transition: color 0.2s;
+      }
+
+      .bookmark-button:hover {
+        color: #fbbf24;
+      }
+
+      .bookmark-button i {
+        font-size: 1.2rem;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      }
+
+      .copy-button:hover {
+        background-color: rgba(0, 0, 0, 0.9);
+        transform: scale(1.1);
+      }
+
+      .copy-button i {
+        font-size: 1rem;
+      }
+
+      .copy-button.success {
+        background-color: rgba(16, 185, 129, 0.8);
+      }
+
+      .copy-button.error {
+        background-color: rgba(239, 68, 68, 0.8);
+      }
     </style>
   </head>
   <body class="bg-gray-100 min-h-screen dark:bg-gray-900">
-    <nav class="bg-indigo-600 text-white shadow-lg">
+    <nav class="bg-indigo-600 text-white shadow-lg relative">
       <div class="container mx-auto px-6 py-4">
-        <div class="flex flex-col md:flex-row gap-4">
-          <a href="/" class="text-2xl font-bold hover:text-gray-200"
-            >Anime Scraper</a
+        <div class="flex justify-between items-center">
+          <div class="text-2xl font-bold">Anime Scraper</div>
+          <button
+            id="menuToggle"
+            class="md:hidden p-2 hover:bg-indigo-700 rounded transition-colors"
           >
-          <div class="flex flex-wrap gap-2">
-            <a
-              href="/"
-              class="hover:bg-indigo-700 px-4 py-2 rounded transition-colors"
-            >
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+        </div>
+        <div id="navbarItems" class="md:mt-4">
+          <div class="flex flex-col md:flex-row gap-2">
+            <a href="/" class="nav-button">
               <i class="fas fa-home mr-2"></i>Home
             </a>
-            <a
-              href="/recommendations"
-              class="bg-indigo-700 px-4 py-2 rounded transition-colors"
-            >
+            <a href="/recommendations" class="nav-button bg-indigo-700">
               <i class="fas fa-thumbs-up mr-2"></i>Recommendations
             </a>
           </div>
@@ -312,6 +458,12 @@
               />
               <div>
                 <h2 id="selectedAnimeTitle" class="text-xl font-bold"></h2>
+                <div class="flex items-center mt-1">
+                  <div class="text-yellow-500 flex items-center hidden">
+                    <i class="fas fa-star mr-1"></i>
+                    <span id="selectedAnimeScore"></span>
+                  </div>
+                </div>
                 <button
                   onclick="clearSelection()"
                   class="text-red-600 text-sm mt-2 hover:text-red-700"
@@ -337,6 +489,33 @@
     <script>
       let searchTimeout;
       let selectedAnimeId = null;
+
+      // Initialize bookmarks from localStorage
+      let bookmarks = JSON.parse(localStorage.getItem("animeBookmarks")) || [];
+
+      function isBookmarked(malId) {
+        return bookmarks.some((b) => b.mal_id === malId);
+      }
+
+      function toggleBookmark(e, anime) {
+        e.stopPropagation();
+        const bookmarkIndex = bookmarks.findIndex(
+          (b) => b.mal_id === anime.mal_id
+        );
+        const icon = e.target.closest("button").querySelector("i");
+
+        if (bookmarkIndex === -1) {
+          bookmarks.push(anime);
+          icon.classList.remove("far");
+          icon.classList.add("fas");
+        } else {
+          bookmarks.splice(bookmarkIndex, 1);
+          icon.classList.remove("fas");
+          icon.classList.add("far");
+        }
+
+        localStorage.setItem("animeBookmarks", JSON.stringify(bookmarks));
+      }
 
       const searchInput = document.getElementById("animeSearch");
       const suggestionsList = document.getElementById("suggestionsList");
@@ -393,11 +572,19 @@
             // Use the original unescaped titles for display
             const displayTitle = anime.title_english || anime.title;
 
+            // Add star rating display
+            const ratingHtml = anime.score
+              ? `<span class="text-yellow-500 ml-2"><i class="fas fa-star"></i> ${anime.score}</span>`
+              : "";
+
             return `
           <div class="suggestion-item" data-id="${anime.mal_id}" data-title-english="${escapedTitleEnglish}" 
                data-title="${escapedTitle}" data-image="${anime.images.jpg.image_url}">
             <img src="${anime.images.jpg.image_url}" alt="${anime.title}">
-            <span class="font-medium">${displayTitle}</span>
+            <div class="flex flex-col">
+              <span class="font-medium">${displayTitle}</span>
+              ${ratingHtml}
+            </div>
           </div>
         `;
           })
@@ -412,14 +599,16 @@
             const titleEnglish = this.getAttribute("data-title-english");
             const title = this.getAttribute("data-title");
             const image = this.getAttribute("data-image");
-            selectAnime(id, titleEnglish, title, image);
+            const score =
+              this.querySelector(".text-yellow-500")?.textContent.trim() || "";
+            selectAnime(id, titleEnglish, title, image, score);
           });
         });
 
         suggestionsList.classList.remove("hidden");
       }
 
-      function selectAnime(id, titleEnglish, title, image) {
+      function selectAnime(id, titleEnglish, title, image, score) {
         selectedAnimeId = id;
 
         // Use the English title if available and unescape it for display
@@ -432,6 +621,17 @@
         document.getElementById("selectedAnimeImage").src = image;
         document.getElementById("selectedAnimeTitle").textContent =
           displayTitle;
+
+        // Add score display if available
+        const scoreElement = document.getElementById("selectedAnimeScore");
+        if (scoreElement) {
+          if (score) {
+            scoreElement.textContent = score;
+            scoreElement.parentElement.classList.remove("hidden");
+          } else {
+            scoreElement.parentElement.classList.add("hidden");
+          }
+        }
 
         // Clear search
         searchInput.value = "";
@@ -459,26 +659,11 @@
         loadingDiv.classList.remove("hidden");
 
         try {
-          // First fetch the recommendations
+          // Fetch the recommendations - scores are now included in the response
           const response = await fetch(`/api/recommendations/${animeId}`);
           const data = await response.json();
 
-          // For each recommendation, fetch additional details to get the score
-          const recommendationsWithDetails = await Promise.all(
-            data.data.map(async (rec) => {
-              try {
-                const detailsResponse = await fetch(
-                  `/api/anime/${rec.entry.mal_id}`
-                );
-                const detailsData = await detailsResponse.json();
-                rec.entry.score = detailsData.data?.score || null;
-              } catch (error) {
-                console.error("Error fetching anime details:", error);
-              }
-              return rec;
-            })
-          );
-
+          // Display recommendations directly since scores are already included
           displayRecommendations(data.data);
         } catch (error) {
           console.error("Error fetching recommendations:", error);
@@ -510,6 +695,7 @@
             const title = (rec.entry.title_english || rec.entry.title)
               .replace(/\\'/g, "'")
               .replace(/\\"/g, '"');
+
             // Limit content length for better display
             const content = rec.content || "No description available.";
             const truncatedContent =
@@ -517,16 +703,35 @@
                 ? content.substring(0, 150) + "..."
                 : content;
 
-            // Rating display
+            // Rating display - score is now included in the initial response
             const ratingHtml = rec.entry.score
               ? `<div class="anime-card-rating">
                 <span class="text-yellow-500 mr-1"><i class="fas fa-star"></i></span>
                 <span>${rec.entry.score}</span>
               </div>`
-              : "";
+              : `<div class="anime-card-rating text-gray-400">
+                <span class="mr-1"><i class="fas fa-star"></i></span>
+                <span>N/A</span>
+              </div>`;
+
+            const malLink = `https://myanimelist.net/anime/${rec.entry.mal_id}`;
+            const bookmarkClass = isBookmarked(rec.entry.mal_id)
+              ? "fas"
+              : "far";
 
             return `
               <div class="anime-card bg-white rounded-lg shadow-lg overflow-hidden">
+                <button class="copy-button" onclick="event.stopPropagation(); copyAnimeInfo('${malLink}', '${title.replace(
+              /'/g,
+              "\\'"
+            )}')">
+                  <i class="fas fa-copy"></i>
+                </button>
+                <button class="bookmark-button" onclick="toggleBookmark(event, ${JSON.stringify(
+                  rec.entry
+                ).replace(/"/g, "&quot;")})">
+                  <i class="${bookmarkClass} fa-bookmark"></i>
+                </button>
                 <img src="${rec.entry.images.jpg.image_url}" alt="${title}" 
                     class="w-full h-full object-cover">
                 <div class="anime-card-content">
@@ -534,7 +739,9 @@
                   ${ratingHtml}
                   <div class="anime-card-details">
                     <p>${truncatedContent}</p>
-                    <div class="recommendation-by">Recommended by: ${rec.user.username}</div>
+                    <div class="recommendation-by">Recommended by: ${
+                      rec.user.username
+                    }</div>
                   </div>
                 </div>
               </div>
@@ -543,11 +750,56 @@
           .join("");
       }
 
+      // Add copy functionality
+      async function copyAnimeInfo(malLink, title) {
+        const textToCopy = `${title}\n${malLink}`;
+
+        try {
+          await navigator.clipboard.writeText(textToCopy);
+
+          // Show temporary success state
+          const button = event.currentTarget;
+          button.classList.add("success");
+
+          setTimeout(() => {
+            button.classList.remove("success");
+          }, 2000);
+        } catch (err) {
+          console.error("Failed to copy:", err);
+
+          // Show error state
+          const button = event.currentTarget;
+          button.classList.add("error");
+
+          setTimeout(() => {
+            button.classList.remove("error");
+          }, 2000);
+        }
+      }
+
       // Close suggestions when clicking outside
       document.addEventListener("click", function (e) {
         if (!e.target.closest(".suggestions-container")) {
           suggestionsList.classList.add("hidden");
         }
+      });
+
+      // Add menu toggle functionality
+      document
+        .getElementById("menuToggle")
+        .addEventListener("click", function () {
+          const navbarItems = document.getElementById("navbarItems");
+          navbarItems.classList.toggle("show");
+        });
+
+      // Add this new event listener for nav buttons
+      document.querySelectorAll(".nav-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const navbarItems = document.getElementById("navbarItems");
+          if (window.innerWidth < 768) {
+            navbarItems.classList.remove("show");
+          }
+        });
       });
     </script>
   </body>
